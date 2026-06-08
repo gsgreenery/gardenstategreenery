@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const pricingTable = {
   services: {
@@ -273,6 +273,7 @@ function getNextLabel(step) {
 
 export default function EstimateWizard() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileWizard, setIsMobileWizard] = useState(false);
   const [step, setStep] = useState(0);
   const [selectedServices, setSelectedServices] = useState([]);
   const [details, setDetails] = useState(initialDetails);
@@ -289,6 +290,19 @@ export default function EstimateWizard() {
   const priceEstimate = getPriceEstimate(selectedServices, details);
   const selectedServiceLabels = selectedServices.map(getServiceLabel);
   const estimateItems = [...priceEstimate.lineItems, ...priceEstimate.modifiers];
+  const bundleLabel = isMobileWizard
+    ? "Mowing bundle (discount available)"
+    : "Mowing add-ons";
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 520px)");
+    const updateMobileState = () => setIsMobileWizard(mediaQuery.matches);
+
+    updateMobileState();
+    mediaQuery.addEventListener("change", updateMobileState);
+
+    return () => mediaQuery.removeEventListener("change", updateMobileState);
+  }, []);
 
   const emailBody = [
     "Estimate follow-up",
@@ -459,7 +473,7 @@ export default function EstimateWizard() {
                     }`}
                   >
                     <div>
-                      <span className="mini-label">Mowing add-ons</span>
+                      <span className="mini-label">{bundleLabel}</span>
                       <p>
                         {hasMowing
                           ? "If you're adding mowing, blowing and edging use the lower visit price."
