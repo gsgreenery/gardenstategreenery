@@ -18,7 +18,7 @@ const emptyJob = {
   customer: "",
   date: "",
   notes: "",
-  service: "Lawn mowing",
+  service: [],
   status: "Scheduled",
   town: "River Edge",
 };
@@ -120,6 +120,42 @@ function StatusPill({ children }) {
   return <span className="ops-status-pill">{children}</span>;
 }
 
+function ServicePicker({ label, name, onChange, options, value }) {
+  const selectedServices = Array.isArray(value) ? value : value ? [value] : [];
+
+  function toggleService(option, checked) {
+    const nextServices = checked
+      ? [...selectedServices, option]
+      : selectedServices.filter((service) => service !== option);
+
+    onChange(name, nextServices);
+  }
+
+  return (
+    <fieldset className="ops-service-picker ops-field-wide">
+      <legend>{label}</legend>
+      <div>
+        {options.map((option) => {
+          const checked = selectedServices.includes(option);
+
+          return (
+            <label className={checked ? "is-selected" : ""} key={option}>
+              <input
+                checked={checked}
+                name={name}
+                onChange={(event) => toggleService(option, event.target.checked)}
+                type="checkbox"
+                value={option}
+              />
+              <span>{option}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 function formatAuditTime(value) {
   if (!value) {
     return "No time";
@@ -168,7 +204,7 @@ export function OverviewView() {
       <PageHeader
         actions={
           <button className="ops-secondary-button" type="button" onClick={actions.resetDemoData}>
-            Reset demo data
+            Reset dashboard data
           </button>
         }
         eyebrow="Operations"
@@ -314,12 +350,13 @@ export function JobsView() {
 
   function submitJob(event) {
     event.preventDefault();
+    const selectedServices = Array.isArray(form.service) ? form.service : [];
 
-    if (!form.customer || !form.date || !form.amount) {
+    if (!form.customer || !form.date || !form.amount || !selectedServices.length) {
       return;
     }
 
-    actions.addJob(form);
+    actions.addJob({ ...form, service: selectedServices.join(", ") });
     setForm({ ...emptyJob, date: todayDate() });
   }
 
@@ -340,7 +377,7 @@ export function JobsView() {
           <form className="ops-form" onSubmit={submitJob}>
             <TextField label="Customer" name="customer" onChange={updateForm} placeholder="Name or address" value={form.customer} />
             <SelectField label="Town" name="town" onChange={updateForm} options={townOptions} value={form.town} />
-            <SelectField label="Service" name="service" onChange={updateForm} options={serviceOptions} value={form.service} />
+            <ServicePicker label="Services" name="service" onChange={updateForm} options={serviceOptions} value={form.service} />
             <TextField label="Date" name="date" onChange={updateForm} type="date" value={form.date} />
             <TextField label="Crew" name="crew" onChange={updateForm} placeholder="Who is going?" value={form.crew} />
             <SelectField label="Status" name="status" onChange={updateForm} options={statusOptions} value={form.status} />
@@ -857,7 +894,8 @@ export function AuditLogView() {
 }
 
 export function EmployeesView() {
-  const { actor } = useDashboardData();
+  const { actor, data } = useDashboardData();
+  const employees = data.employees?.length ? data.employees : employeeProfiles;
 
   return (
     <>
@@ -867,7 +905,7 @@ export function EmployeesView() {
 
       <section className="ops-card">
         <div className="ops-employee-grid">
-          {employeeProfiles.map((employee) => (
+          {employees.map((employee) => (
             <article
               className={`ops-employee-card ${
                 actor?.slug === employee.slug ? "is-current" : ""

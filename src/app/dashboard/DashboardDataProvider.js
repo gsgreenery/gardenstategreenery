@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { initialDashboardData } from "./dashboardSeed";
 
 const STORAGE_KEY = "gsg-dashboard-data-v2";
@@ -111,6 +119,20 @@ function saveData(nextData) {
   window.dispatchEvent(new Event(STORAGE_EVENT));
 }
 
+async function sendCloudMutation(mutation) {
+  const response = await fetch("/api/dashboard/data", {
+    body: JSON.stringify(mutation),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error("Dashboard cloud save failed.");
+  }
+
+  return response.json();
+}
+
 function updateData(actor, updater, audit) {
   const currentData = parseSnapshot(getSnapshot());
   const updatedData = updater(currentData);
@@ -124,11 +146,69 @@ function updateData(actor, updater, audit) {
 const DashboardDataContext = createContext(null);
 
 export function DashboardDataProvider({ actor, children }) {
+  const [cloudStatus, setCloudStatus] = useState("checking");
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const data = useMemo(() => parseSnapshot(snapshot), [snapshot]);
+  const cloudEnabled = cloudStatus === "enabled";
 
   useEffect(() => {
-    if (typeof window === "undefined" || !actor?.slug) {
+    let active = true;
+
+    async function loadCloudData() {
+      try {
+        const response = await fetch("/api/dashboard/data", { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error("Dashboard cloud load failed.");
+        }
+
+        const payload = await response.json();
+
+        if (!active) {
+          return;
+        }
+
+        if (payload.configured && payload.data) {
+          saveData(payload.data);
+          setCloudStatus("enabled");
+        } else {
+          setCloudStatus("local");
+        }
+      } catch {
+        if (active) {
+          setCloudStatus("local");
+        }
+      }
+    }
+
+    loadCloudData();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const persistMutation = useCallback(
+    (mutation) => {
+      if (!cloudEnabled) {
+        return;
+      }
+
+      sendCloudMutation(mutation)
+        .then((payload) => {
+          if (payload.configured && payload.data) {
+            saveData(payload.data);
+          }
+        })
+        .catch(() => {
+          setCloudStatus("local");
+        });
+    },
+    [cloudEnabled],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !actor?.slug || cloudStatus === "checking") {
       return;
     }
 
@@ -144,7 +224,8 @@ export function DashboardDataProvider({ actor, children }) {
       detail: `${getActorName(actor)} opened the employee dashboard.`,
       target: "Dashboard",
     });
-  }, [actor]);
+    persistMutation({ type: "signIn" });
+  }, [actor, cloudStatus, persistMutation]);
 
   const totals = useMemo(() => {
     const moneyIn = data.jobs
@@ -180,6 +261,7 @@ export function DashboardDataProvider({ actor, children }) {
             target: "Blacklist",
           },
         );
+        persistMutation({ payload: savedItem, type: "addBlacklistItem" });
       },
       addCustomer(customer) {
         const savedCustomer = { ...customer, id: makeId("CUS") };
@@ -196,6 +278,7 @@ export function DashboardDataProvider({ actor, children }) {
             target: "Customers",
           },
         );
+        persistMutation({ payload: savedCustomer, type: "addCustomer" });
       },
       addEquipment(item) {
         const savedItem = { ...item, id: makeId("EQ") };
@@ -212,6 +295,7 @@ export function DashboardDataProvider({ actor, children }) {
             target: "Equipment",
           },
         );
+        persistMutation({ payload: savedItem, type: "addEquipment" });
       },
       addExpense(expense) {
         const savedExpense = { ...expense, amount: Number(expense.amount || 0), id: makeId("EXP") };
@@ -228,6 +312,7 @@ export function DashboardDataProvider({ actor, children }) {
             target: "Expenses",
           },
         );
+        persistMutation({ payload: savedExpense, type: "addExpense" });
       },
       addJob(job) {
         const savedJob = { ...job, amount: Number(job.amount || 0), id: makeId("JOB") };
@@ -244,6 +329,7 @@ export function DashboardDataProvider({ actor, children }) {
             target: "Jobs",
           },
         );
+        persistMutation({ payload: savedJob, type: "addJob" });
       },
       addMarketingSource(source) {
         const savedSource = {
@@ -266,6 +352,7 @@ export function DashboardDataProvider({ actor, children }) {
             target: "Marketing",
           },
         );
+        persistMutation({ payload: savedSource, type: "addMarketingSource" });
       },
       addNote(text) {
         const savedNote = { id: makeId("NOTE"), text };
@@ -282,8 +369,12 @@ export function DashboardDataProvider({ actor, children }) {
             target: "Crew Notes",
           },
         );
+        persistMutation({ payload: savedNote, type: "addNote" });
       },
       deleteItem(collection, id) {
+        const currentData = parseSnapshot(getSnapshot());
+        const deletedItem = currentData[collection]?.find((item) => item.id === id);
+
         updateData(
           actor,
           (current) => {
@@ -302,6 +393,10 @@ export function DashboardDataProvider({ actor, children }) {
           },
           null,
         );
+        persistMutation({
+          payload: { collection, id, label: describeRecord(deletedItem) },
+          type: "deleteItem",
+        });
       },
       resetDemoData() {
         const currentData = parseSnapshot(getSnapshot());
@@ -312,11 +407,15 @@ export function DashboardDataProvider({ actor, children }) {
             actor,
             "Reset",
             "Dashboard",
-            "Reset dashboard demo data.",
+            "Reset dashboard data.",
           ),
         );
+        persistMutation({ type: "resetDemoData" });
       },
       updateEquipmentStatus(id, status) {
+        const currentData = parseSnapshot(getSnapshot());
+        const equipmentItem = currentData.equipment.find((item) => item.id === id);
+
         updateData(
           actor,
           (current) => {
@@ -340,8 +439,15 @@ export function DashboardDataProvider({ actor, children }) {
           },
           null,
         );
+        persistMutation({
+          payload: { id, item: describeRecord(equipmentItem), status },
+          type: "updateEquipmentStatus",
+        });
       },
       updateJob(id, changes) {
+        const currentData = parseSnapshot(getSnapshot());
+        const job = currentData.jobs.find((item) => item.id === id);
+
         updateData(
           actor,
           (current) => {
@@ -364,8 +470,15 @@ export function DashboardDataProvider({ actor, children }) {
           },
           null,
         );
+        persistMutation({
+          payload: { changes, id, label: describeRecord(job) },
+          type: "updateJob",
+        });
       },
       updateMarketing(id, changes) {
+        const currentData = parseSnapshot(getSnapshot());
+        const source = currentData.marketing.find((item) => item.id === id);
+
         updateData(
           actor,
           (current) => {
@@ -397,12 +510,19 @@ export function DashboardDataProvider({ actor, children }) {
           },
           null,
         );
+        persistMutation({
+          payload: { changes, id, label: describeRecord(source) },
+          type: "updateMarketing",
+        });
       },
     }),
-    [actor],
+    [actor, persistMutation],
   );
 
-  const value = useMemo(() => ({ actions, actor, data, totals }), [actions, actor, data, totals]);
+  const value = useMemo(
+    () => ({ actions, actor, cloudStatus, data, totals }),
+    [actions, actor, cloudStatus, data, totals],
+  );
 
   return <DashboardDataContext.Provider value={value}>{children}</DashboardDataContext.Provider>;
 }

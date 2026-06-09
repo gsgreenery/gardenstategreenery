@@ -3778,6 +3778,67 @@ select {
   grid-column: span 2;
 }
 
+.ops-service-picker {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ops-service-picker legend {
+  color: var(--leaf-deep);
+  font-size: 0.74rem;
+  font-weight: 930;
+  text-transform: uppercase;
+}
+
+.ops-service-picker div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ops-service-picker label {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid rgba(23, 32, 27, 0.11);
+  border-radius: 8px;
+  background: rgba(247, 243, 234, 0.62);
+  color: var(--leaf-deep);
+  font-size: 0.84rem;
+  font-weight: 820;
+  text-transform: none;
+  cursor: pointer;
+  transition:
+    border-color 170ms ease,
+    background-color 170ms ease,
+    color 170ms ease;
+}
+
+.ops-service-picker label:hover,
+.ops-service-picker label:focus-within {
+  border-color: rgba(207, 113, 60, 0.34);
+  background: #fff8ed;
+}
+
+.ops-service-picker label.is-selected {
+  border-color: rgba(207, 113, 60, 0.45);
+  background: rgba(207, 113, 60, 0.12);
+  color: var(--orange);
+}
+
+.ops-service-picker input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--orange);
+  cursor: pointer;
+}
+
 .ops-field input,
 .ops-field select,
 .ops-field textarea,
