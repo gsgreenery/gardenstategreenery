@@ -12,9 +12,13 @@ const nunito = Nunito({
 });
 
 export const metadata = {
-  title: "Garden State Greenery | Lawn Care and Cleanup",
+  title: "Garden State Greenery",
   description:
     "Lawn mowing, blowing, edging, mulching, leaf cleanup, raking, and snow shoveling for homes in River Edge, Oradell, and Paramus.",
+  icons: {
+    icon: [{ url: "/favicon.png?v=3", type: "image/png" }],
+    shortcut: [{ url: "/favicon.png?v=3", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }) {
