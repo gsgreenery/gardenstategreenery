@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { DashboardDataProvider } from "./DashboardDataProvider";
 
 const navItems = [
@@ -20,6 +22,7 @@ const navItems = [
 
 export default function DashboardShell({ children, employee }) {
   const pathname = usePathname();
+  const [pagesOpen, setPagesOpen] = useState(false);
   const currentPage = navItems.find((item) => item.href === pathname)?.label || "Dashboard";
 
   return (
@@ -27,12 +30,48 @@ export default function DashboardShell({ children, employee }) {
       <main className="ops-shell">
         <aside className="ops-sidebar" aria-label="Employee dashboard navigation">
           <Link className="ops-brand" href="/" aria-label="Garden State Greenery home">
-            <span className="ops-brand-mark">GSG</span>
+            <span className="ops-brand-mark" aria-hidden="true">
+              <Image
+                src="/squareicon.png?v=1"
+                alt=""
+                width={34}
+                height={34}
+                unoptimized
+              />
+            </span>
             <span>
               <strong>Garden State Greenery</strong>
               <small>Employee ops</small>
             </span>
           </Link>
+
+          <div className="ops-page-menu">
+            <button
+              aria-controls="dashboard-page-menu"
+              aria-expanded={pagesOpen}
+              className="ops-page-menu-button"
+              onClick={() => setPagesOpen((isOpen) => !isOpen)}
+              type="button"
+            >
+              <span>Pages</span>
+              <small>{currentPage}</small>
+            </button>
+            <div
+              className={`ops-page-menu-list ${pagesOpen ? "is-open" : ""}`}
+              id="dashboard-page-menu"
+            >
+              {navItems.map((item) => (
+                <Link
+                  className={pathname === item.href ? "is-active" : ""}
+                  href={item.href}
+                  key={item.href}
+                  onClick={() => setPagesOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
 
           <nav className="ops-nav">
             {navItems.map((item) => (

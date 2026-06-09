@@ -15,6 +15,7 @@ create table if not exists public.gsg_employees (
   name text not null,
   title text not null,
   env text,
+  is_management boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -240,17 +241,21 @@ for all to service_role
 using (true)
 with check (true);
 
-insert into public.gsg_employees (slug, name, title, env)
+alter table public.gsg_employees
+add column if not exists is_management boolean not null default false;
+
+insert into public.gsg_employees (slug, name, title, env, is_management)
 values
-  ('lucas', 'Lucas', 'Operations & Logistics', 'GSG_DASHBOARD_PASSWORD_LUCAS'),
-  ('cairo', 'Cairo', 'Relations & Field', 'GSG_DASHBOARD_PASSWORD_CAIRO'),
-  ('danny', 'Danny', 'Business & Financial', 'GSG_DASHBOARD_PASSWORD_DANNY'),
-  ('peter', 'Peter', 'Team Member', 'GSG_DASHBOARD_PASSWORD_PETER'),
-  ('sam', 'Sam', 'Team Member', 'GSG_DASHBOARD_PASSWORD_SAM')
+  ('lucas', 'Lucas', 'Operations & Logistics', 'GSG_DASHBOARD_PASSWORD_LUCAS', true),
+  ('cairo', 'Cairo', 'Relations & Field', 'GSG_DASHBOARD_PASSWORD_CAIRO', false),
+  ('danny', 'Danny', 'Business & Financial', 'GSG_DASHBOARD_PASSWORD_DANNY', true),
+  ('peter', 'Peter', 'Marketing & Social Media', 'GSG_DASHBOARD_PASSWORD_PETER', false),
+  ('sam', 'Sam', 'Team Member', 'GSG_DASHBOARD_PASSWORD_SAM', false)
 on conflict (slug) do update
 set
   name = excluded.name,
   title = excluded.title,
-  env = excluded.env;
+  env = excluded.env,
+  is_management = excluded.is_management;
 
 commit;

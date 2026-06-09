@@ -43,12 +43,14 @@ const collections = {
     table: "gsg_employees",
     fromDb: (row) => ({
       env: row.env,
+      isManagement: row.is_management,
       name: row.name,
       slug: row.slug,
       title: row.title,
     }),
     toDb: (item) => ({
       env: item.env,
+      is_management: item.isManagement,
       name: item.name,
       slug: item.slug,
       title: item.title,

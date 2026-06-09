@@ -190,10 +190,19 @@ function AuditList({ entries, limit }) {
   );
 }
 
+function getEmployeeDisplayList(savedEmployees = []) {
+  const savedBySlug = new Map(savedEmployees.map((employee) => [employee.slug, employee]));
+
+  return employeeProfiles.map((profile) => ({
+    ...savedBySlug.get(profile.slug),
+    ...profile,
+  }));
+}
+
 export function OverviewView() {
   const { actions, data, totals } = useDashboardData();
   const upcomingJobs = useMemo(
-    () => [...data.jobs].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5),
+    () => [...data.jobs].sort((a, b) => (a.date || "").localeCompare(b.date || "")).slice(0, 5),
     [data.jobs],
   );
   const urgentEquipment = data.equipment.filter((item) => item.status !== "Ready");
@@ -233,7 +242,7 @@ export function OverviewView() {
       </section>
 
       <section className="ops-page-grid">
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Schedule</p>
@@ -244,21 +253,25 @@ export function OverviewView() {
             </Link>
           </div>
           <div className="ops-table">
-            {upcomingJobs.map((job) => (
-              <div className="ops-table-row" key={job.id}>
-                <span>
-                  <strong>{job.date}</strong>
-                  {job.customer}
-                </span>
-                <span>{job.service}</span>
-                <span>{job.town}</span>
-                <StatusPill>{job.status}</StatusPill>
-              </div>
-            ))}
+            {upcomingJobs.length ? (
+              upcomingJobs.map((job) => (
+                <div className="ops-table-row" key={job.id}>
+                  <span>
+                    <strong>{job.date || "No date set"}</strong>
+                    {job.customer}
+                  </span>
+                  <span>{job.service}</span>
+                  <span>{job.town}</span>
+                  <StatusPill>{job.status || "Scheduled"}</StatusPill>
+                </div>
+              ))
+            ) : (
+              <EmptyState>No upcoming jobs yet.</EmptyState>
+            )}
           </div>
         </article>
 
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Crew notes</p>
@@ -269,37 +282,15 @@ export function OverviewView() {
             </Link>
           </div>
           <div className="ops-note-stack">
-            {data.notes.slice(0, 4).map((note) => (
-              <p key={note.id}>{note.text}</p>
-            ))}
-          </div>
-        </article>
-
-        <article className="ops-card">
-          <div className="ops-card-head">
-            <div>
-              <p className="ops-kicker">Equipment</p>
-              <h2>Needs attention</h2>
-            </div>
-            <Link className="ops-text-link" href="/dashboard/equipment">
-              Truck check
-            </Link>
-          </div>
-          <div className="ops-compact-list">
-            {urgentEquipment.length ? (
-              urgentEquipment.map((item) => (
-                <p key={item.id}>
-                  <span>{item.item}</span>
-                  <StatusPill>{item.status}</StatusPill>
-                </p>
-              ))
+            {data.notes.length ? (
+              data.notes.slice(0, 4).map((note) => <p key={note.id}>{note.text}</p>)
             ) : (
-              <EmptyState>Everything is marked ready.</EmptyState>
+              <EmptyState>No crew notes yet.</EmptyState>
             )}
           </div>
         </article>
 
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Sections</p>
@@ -323,7 +314,31 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-side">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">Equipment</p>
+              <h2>Needs attention</h2>
+            </div>
+            <Link className="ops-text-link" href="/dashboard/equipment">
+              Truck check
+            </Link>
+          </div>
+          <div className="ops-compact-list">
+            {urgentEquipment.length ? (
+              urgentEquipment.map((item) => (
+                <p key={item.id}>
+                  <span>{item.item}</span>
+                  <StatusPill>{item.status}</StatusPill>
+                </p>
+              ))
+            ) : (
+              <EmptyState>Everything is marked ready.</EmptyState>
+            )}
+          </div>
+        </article>
+
+        <article className="ops-card ops-card-wide">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Activity</p>
@@ -367,7 +382,7 @@ export function JobsView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-wide">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">New job</p>
@@ -389,7 +404,7 @@ export function JobsView() {
           </form>
         </article>
 
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-wide">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Active log</p>
@@ -397,28 +412,32 @@ export function JobsView() {
             </div>
           </div>
           <div className="ops-table">
-            {data.jobs.map((job) => (
-              <div className="ops-table-row ops-table-row-actions" key={job.id}>
-                <span>
-                  <strong>{job.customer}</strong>
-                  {job.date} / {job.town}
-                </span>
-                <span>{job.service}</span>
-                <span>{currency(job.amount)}</span>
-                <select
-                  aria-label={`Status for ${job.customer}`}
-                  value={job.status}
-                  onChange={(event) => actions.updateJob(job.id, { status: event.target.value })}
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status}>{status}</option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => actions.deleteItem("jobs", job.id)}>
-                  Delete
-                </button>
-              </div>
-            ))}
+            {data.jobs.length ? (
+              data.jobs.map((job) => (
+                <div className="ops-table-row ops-table-row-actions" key={job.id}>
+                  <span>
+                    <strong>{job.customer}</strong>
+                    {job.date} / {job.town}
+                  </span>
+                  <span>{job.service}</span>
+                  <span>{currency(job.amount)}</span>
+                  <select
+                    aria-label={`Status for ${job.customer}`}
+                    value={job.status}
+                    onChange={(event) => actions.updateJob(job.id, { status: event.target.value })}
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status}>{status}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => actions.deleteItem("jobs", job.id)}>
+                    Delete
+                  </button>
+                </div>
+              ))
+            ) : (
+              <EmptyState>No jobs logged yet.</EmptyState>
+            )}
           </div>
         </article>
       </section>
@@ -452,7 +471,7 @@ export function ExpensesView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Total spent</p>
@@ -470,7 +489,7 @@ export function ExpensesView() {
           </form>
         </article>
 
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">History</p>
@@ -478,19 +497,23 @@ export function ExpensesView() {
             </div>
           </div>
           <div className="ops-table">
-            {data.expenses.map((expense) => (
-              <div className="ops-table-row ops-table-row-actions" key={expense.id}>
-                <span>
-                  <strong>{expense.item}</strong>
-                  {expense.date}
-                </span>
-                <span>{expense.category}</span>
-                <span>{currency(expense.amount)}</span>
-                <button type="button" onClick={() => actions.deleteItem("expenses", expense.id)}>
-                  Delete
-                </button>
-              </div>
-            ))}
+            {data.expenses.length ? (
+              data.expenses.map((expense) => (
+                <div className="ops-table-row ops-table-row-actions" key={expense.id}>
+                  <span>
+                    <strong>{expense.item}</strong>
+                    {expense.date}
+                  </span>
+                  <span>{expense.category}</span>
+                  <span>{currency(expense.amount)}</span>
+                  <button type="button" onClick={() => actions.deleteItem("expenses", expense.id)}>
+                    Delete
+                  </button>
+                </div>
+              ))
+            ) : (
+              <EmptyState>No expenses logged yet.</EmptyState>
+            )}
           </div>
         </article>
       </section>
@@ -501,7 +524,7 @@ export function ExpensesView() {
 export function ScheduleView() {
   const { actions, data } = useDashboardData();
   const scheduledJobs = useMemo(
-    () => [...data.jobs].sort((a, b) => a.date.localeCompare(b.date)),
+    () => [...data.jobs].sort((a, b) => (a.date || "").localeCompare(b.date || "")),
     [data.jobs],
   );
 
@@ -513,27 +536,31 @@ export function ScheduleView() {
 
       <section className="ops-card">
         <div className="ops-schedule-list">
-          {scheduledJobs.map((job) => (
-            <article className="ops-schedule-item" key={job.id}>
-              <time>{job.date}</time>
-              <div>
-                <strong>{job.customer}</strong>
-                <p>
-                  {job.service} in {job.town}
-                </p>
-                <small>{job.crew || "Crew not assigned"}</small>
-              </div>
-              <select
-                aria-label={`Status for ${job.customer}`}
-                value={job.status}
-                onChange={(event) => actions.updateJob(job.id, { status: event.target.value })}
-              >
-                {statusOptions.map((status) => (
-                  <option key={status}>{status}</option>
-                ))}
-              </select>
-            </article>
-          ))}
+          {scheduledJobs.length ? (
+            scheduledJobs.map((job) => (
+              <article className="ops-schedule-item" key={job.id}>
+                <time dateTime={job.date || undefined}>{job.date || "No date set"}</time>
+                <div>
+                  <strong>{job.customer || "Unnamed job"}</strong>
+                  <p>
+                    {job.service || "Service"}{job.town ? ` in ${job.town}` : ""}
+                  </p>
+                  <small>{job.crew || "Crew not assigned"}</small>
+                </div>
+                <select
+                  aria-label={`Status for ${job.customer || "job"}`}
+                  value={job.status || "Scheduled"}
+                  onChange={(event) => actions.updateJob(job.id, { status: event.target.value })}
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+              </article>
+            ))
+          ) : (
+            <EmptyState>No jobs scheduled yet.</EmptyState>
+          )}
         </div>
       </section>
     </>
@@ -566,7 +593,7 @@ export function CustomersView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">New customer</p>
@@ -585,26 +612,30 @@ export function CustomersView() {
           </form>
         </article>
 
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Directory</p>
               <h2>{data.customers.length} customers</h2>
             </div>
           </div>
-          <div className="ops-record-grid">
-            {data.customers.map((customer) => (
-              <section className="ops-record-card" key={customer.id}>
-                <strong>{customer.name}</strong>
-                <span>{customer.town} / {customer.phone || "No phone"}</span>
-                <p>{customer.lastService || "No service logged yet"}</p>
-                <small>{customer.access || "No access notes"}</small>
-                <button type="button" onClick={() => actions.deleteItem("customers", customer.id)}>
-                  Delete
-                </button>
-              </section>
-            ))}
-          </div>
+          {data.customers.length ? (
+            <div className="ops-record-grid">
+              {data.customers.map((customer) => (
+                <section className="ops-record-card" key={customer.id}>
+                  <strong>{customer.name}</strong>
+                  <span>{customer.town} / {customer.phone || "No phone"}</span>
+                  <p>{customer.lastService || "No service logged yet"}</p>
+                  <small>{customer.access || "No access notes"}</small>
+                  <button type="button" onClick={() => actions.deleteItem("customers", customer.id)}>
+                    Delete
+                  </button>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No customers saved yet.</EmptyState>
+          )}
         </article>
       </section>
     </>
@@ -637,7 +668,7 @@ export function BlacklistView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">New entry</p>
@@ -654,18 +685,28 @@ export function BlacklistView() {
           </form>
         </article>
 
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">Flagged list</p>
+              <h2>{data.blacklist.length} entries</h2>
+            </div>
+          </div>
           <div className="ops-warning-list">
-            {data.blacklist.map((item) => (
-              <section className="ops-warning-card" key={item.id}>
-                <strong>{item.name}</strong>
-                <span>{item.reason}</span>
-                <StatusPill>{item.status}</StatusPill>
-                <button type="button" onClick={() => actions.deleteItem("blacklist", item.id)}>
-                  Delete
-                </button>
-              </section>
-            ))}
+            {data.blacklist.length ? (
+              data.blacklist.map((item) => (
+                <section className="ops-warning-card" key={item.id}>
+                  <strong>{item.name}</strong>
+                  <span>{item.reason}</span>
+                  <StatusPill>{item.status}</StatusPill>
+                  <button type="button" onClick={() => actions.deleteItem("blacklist", item.id)}>
+                    Delete
+                  </button>
+                </section>
+              ))
+            ) : (
+              <EmptyState>No blacklist entries.</EmptyState>
+            )}
           </div>
         </article>
       </section>
@@ -695,7 +736,13 @@ export function NotesView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">New note</p>
+              <h2>Add note</h2>
+            </div>
+          </div>
           <form className="ops-note-form" onSubmit={submitNote}>
             <textarea
               onChange={(event) => setText(event.target.value)}
@@ -707,16 +754,26 @@ export function NotesView() {
             </button>
           </form>
         </article>
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">Note log</p>
+              <h2>{data.notes.length} notes</h2>
+            </div>
+          </div>
           <div className="ops-note-stack">
-            {data.notes.map((note) => (
-              <p key={note.id}>
-                {note.text}
-                <button type="button" onClick={() => actions.deleteItem("notes", note.id)}>
-                  Delete
-                </button>
-              </p>
-            ))}
+            {data.notes.length ? (
+              data.notes.map((note) => (
+                <p key={note.id}>
+                  {note.text}
+                  <button type="button" onClick={() => actions.deleteItem("notes", note.id)}>
+                    Delete
+                  </button>
+                </p>
+              ))
+            ) : (
+              <EmptyState>No crew notes yet.</EmptyState>
+            )}
           </div>
         </article>
       </section>
@@ -750,7 +807,13 @@ export function EquipmentView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">New item</p>
+              <h2>Add equipment</h2>
+            </div>
+          </div>
           <form className="ops-form ops-form-single" onSubmit={submitEquipment}>
             <TextField label="Item" name="item" onChange={updateForm} placeholder="Mower, blower..." value={form.item} />
             <SelectField label="Status" name="status" onChange={updateForm} options={equipmentStatuses} value={form.status} />
@@ -760,27 +823,37 @@ export function EquipmentView() {
             </button>
           </form>
         </article>
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">Equipment list</p>
+              <h2>{data.equipment.length} items</h2>
+            </div>
+          </div>
           <div className="ops-equipment-list">
-            {data.equipment.map((item) => (
-              <label key={item.id}>
-                <span>
-                  <strong>{item.item}</strong>
-                  <small>{item.note || "No note"}</small>
-                </span>
-                <select
-                  value={item.status}
-                  onChange={(event) => actions.updateEquipmentStatus(item.id, event.target.value)}
-                >
-                  {equipmentStatuses.map((status) => (
-                    <option key={status}>{status}</option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => actions.deleteItem("equipment", item.id)}>
-                  Delete
-                </button>
-              </label>
-            ))}
+            {data.equipment.length ? (
+              data.equipment.map((item) => (
+                <label key={item.id}>
+                  <span>
+                    <strong>{item.item}</strong>
+                    <small>{item.note || "No note"}</small>
+                  </span>
+                  <select
+                    value={item.status}
+                    onChange={(event) => actions.updateEquipmentStatus(item.id, event.target.value)}
+                  >
+                    {equipmentStatuses.map((status) => (
+                      <option key={status}>{status}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => actions.deleteItem("equipment", item.id)}>
+                    Delete
+                  </button>
+                </label>
+              ))
+            ) : (
+              <EmptyState>No equipment added yet.</EmptyState>
+            )}
           </div>
         </article>
       </section>
@@ -814,7 +887,13 @@ export function MarketingView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">New source</p>
+              <h2>Add source</h2>
+            </div>
+          </div>
           <form className="ops-form ops-form-single" onSubmit={submitSource}>
             <TextField label="Source" name="source" onChange={updateForm} placeholder="Flyers, Instagram..." value={form.source} />
             <TextField label="Leads" name="leads" onChange={updateForm} placeholder="0" type="number" value={form.leads} />
@@ -825,24 +904,36 @@ export function MarketingView() {
             </button>
           </form>
         </article>
-        <article className="ops-card ops-card-span">
-          <div className="ops-record-grid">
-            {data.marketing.map((source) => {
-              const closeRate = source.leads ? Math.round((source.booked / source.leads) * 100) : 0;
-
-              return (
-                <section className="ops-record-card" key={source.id}>
-                  <strong>{source.source}</strong>
-                  <span>{source.leads} leads / {source.booked} booked</span>
-                  <p>{closeRate}% close rate</p>
-                  <small>{currency(source.spend)} spend</small>
-                  <button type="button" onClick={() => actions.deleteItem("marketing", source.id)}>
-                    Delete
-                  </button>
-                </section>
-              );
-            })}
+        <article className="ops-card ops-card-main">
+          <div className="ops-card-head">
+            <div>
+              <p className="ops-kicker">Sources</p>
+              <h2>{data.marketing.length} tracked</h2>
+            </div>
           </div>
+          {data.marketing.length ? (
+            <div className="ops-record-grid">
+              {data.marketing.map((source) => {
+                const closeRate = source.leads
+                  ? Math.round((source.booked / source.leads) * 100)
+                  : 0;
+
+                return (
+                  <section className="ops-record-card" key={source.id}>
+                    <strong>{source.source}</strong>
+                    <span>{source.leads} leads / {source.booked} booked</span>
+                    <p>{closeRate}% close rate</p>
+                    <small>{currency(source.spend)} spend</small>
+                    <button type="button" onClick={() => actions.deleteItem("marketing", source.id)}>
+                      Delete
+                    </button>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState>No marketing sources tracked yet.</EmptyState>
+          )}
         </article>
       </section>
     </>
@@ -860,7 +951,7 @@ export function AuditLogView() {
       </PageHeader>
 
       <section className="ops-page-grid">
-        <article className="ops-card">
+        <article className="ops-card ops-card-side">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">Current user</p>
@@ -879,7 +970,7 @@ export function AuditLogView() {
           </div>
         </article>
 
-        <article className="ops-card ops-card-span">
+        <article className="ops-card ops-card-main">
           <div className="ops-card-head">
             <div>
               <p className="ops-kicker">History</p>
@@ -895,7 +986,7 @@ export function AuditLogView() {
 
 export function EmployeesView() {
   const { actor, data } = useDashboardData();
-  const employees = data.employees?.length ? data.employees : employeeProfiles;
+  const employees = getEmployeeDisplayList(data.employees);
 
   return (
     <>
@@ -903,7 +994,7 @@ export function EmployeesView() {
         People with dashboard access and the role they cover.
       </PageHeader>
 
-      <section className="ops-card">
+      <section className="ops-card ops-card-wide">
         <div className="ops-employee-grid">
           {employees.map((employee) => (
             <article
@@ -917,6 +1008,7 @@ export function EmployeesView() {
                 <strong>{employee.name}</strong>
                 <small>{employee.title}</small>
               </div>
+              {employee.isManagement ? <span className="ops-management-pill">MGT</span> : null}
               {actor?.slug === employee.slug ? <StatusPill>Signed in</StatusPill> : null}
             </article>
           ))}
