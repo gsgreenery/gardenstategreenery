@@ -200,7 +200,7 @@ function getEmployeeDisplayList(savedEmployees = []) {
 }
 
 export function OverviewView() {
-  const { actions, data, totals } = useDashboardData();
+  const { data, totals } = useDashboardData();
   const upcomingJobs = useMemo(
     () => [...data.jobs].sort((a, b) => (a.date || "").localeCompare(b.date || "")).slice(0, 5),
     [data.jobs],
@@ -211,11 +211,6 @@ export function OverviewView() {
   return (
     <>
       <PageHeader
-        actions={
-          <button className="ops-secondary-button" type="button" onClick={actions.resetDemoData}>
-            Reset dashboard data
-          </button>
-        }
         eyebrow="Operations"
         title="Today at a glance"
       >

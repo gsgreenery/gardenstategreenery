@@ -4,14 +4,14 @@ export const employeeProfiles = [
     isManagement: true,
     name: "Lucas",
     slug: "lucas",
-    title: "Operations & Logistics",
+    title: "Logistics, Operations, Infrastructure",
   },
   {
     env: "GSG_DASHBOARD_PASSWORD_CAIRO",
     isManagement: false,
     name: "Cairo",
     slug: "cairo",
-    title: "Relations & Field",
+    title: "Field Supervision & Relations",
   },
   {
     env: "GSG_DASHBOARD_PASSWORD_DANNY",
@@ -32,6 +32,6 @@ export const employeeProfiles = [
     isManagement: false,
     name: "Sam",
     slug: "sam",
-    title: "Team Member",
+    title: "Relations & Operations",
   },
 ];

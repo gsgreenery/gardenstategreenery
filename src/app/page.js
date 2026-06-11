@@ -135,7 +135,7 @@ export default function Home() {
               </div>
 
               <div className="contact-methods">
-                <a className="contact-method" href="tel:+15515022099">
+                <a className="contact-method" href="tel:+17323016721">
                   <span className="contact-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false">
                       <path d="M6.6 3.8 9 3.2l2.2 5-1.5 1.3a10.2 10.2 0 0 0 4.8 4.8l1.3-1.5 5 2.2-.6 2.4c-.3 1.2-1.3 2-2.5 2A14.7 14.7 0 0 1 3.6 5.9c0-1.1.8-2.1 2-2.4Z" />
@@ -143,7 +143,7 @@ export default function Home() {
                   </span>
                   <span>
                     <small>Call or text</small>
-                    <strong>551.502.2099</strong>
+                    <strong>732-301-6721</strong>
                   </span>
                 </a>
 

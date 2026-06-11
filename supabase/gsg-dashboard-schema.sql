@@ -246,11 +246,11 @@ add column if not exists is_management boolean not null default false;
 
 insert into public.gsg_employees (slug, name, title, env, is_management)
 values
-  ('lucas', 'Lucas', 'Operations & Logistics', 'GSG_DASHBOARD_PASSWORD_LUCAS', true),
-  ('cairo', 'Cairo', 'Relations & Field', 'GSG_DASHBOARD_PASSWORD_CAIRO', false),
+  ('lucas', 'Lucas', 'Logistics, Operations, Infrastructure', 'GSG_DASHBOARD_PASSWORD_LUCAS', true),
+  ('cairo', 'Cairo', 'Field Supervision & Relations', 'GSG_DASHBOARD_PASSWORD_CAIRO', false),
   ('danny', 'Danny', 'Business & Financial', 'GSG_DASHBOARD_PASSWORD_DANNY', true),
   ('peter', 'Peter', 'Marketing & Social Media', 'GSG_DASHBOARD_PASSWORD_PETER', false),
-  ('sam', 'Sam', 'Team Member', 'GSG_DASHBOARD_PASSWORD_SAM', false)
+  ('sam', 'Sam', 'Relations & Operations', 'GSG_DASHBOARD_PASSWORD_SAM', false)
 on conflict (slug) do update
 set
   name = excluded.name,
